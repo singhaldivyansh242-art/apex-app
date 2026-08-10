@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apex Voice AI</title>
+    <title>Apex Voice & Text AI</title>
     <style>
         body {
             background-color: #121212;
@@ -27,7 +27,7 @@
             cursor: pointer;
             box-shadow: 0 0 20px #ff3b3b;
             transition: 0.3s;
-            margin: 30px 0;
+            margin: 20px 0;
             -webkit-tap-highlight-color: transparent;
         }
         .mic-btn.recording {
@@ -36,29 +36,95 @@
             transform: scale(1.1);
         }
         #status { font-size: 1.2rem; color: #aaa; margin-bottom: 10px; }
-        #response-text { text-align: center; max-width: 80%; color: #00ffcc; }
+        #response-text { text-align: center; max-width: 80%; color: #00ffcc; margin-bottom: 20px; }
+        
+        /* New Text Box Styles */
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        input[type="text"] {
+            padding: 12px;
+            width: 250px;
+            border-radius: 5px;
+            border: none;
+            outline: none;
+            background-color: #2a2a2a;
+            color: white;
+        }
+        .send-btn {
+            padding: 12px 20px;
+            background-color: #00ffcc;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #121212;
+        }
     </style>
 </head>
 <body>
 
     <h1>APEX ⚡</h1>
-    <div id="status">Tap the mic and speak...</div>
+    <div id="status">Tap the mic or type below...</div>
     <button id="micBtn" class="mic-btn">🎙️</button>
     <div id="response-text"></div>
+
+    <!-- The Text Box is Back! -->
+    <div class="input-container">
+        <input type="text" id="textInput" placeholder="Type a message to Apex...">
+        <button id="sendBtn" class="send-btn">Send</button>
+    </div>
 
     <script>
         const micBtn = document.getElementById('micBtn');
         const statusTxt = document.getElementById('status');
         const responseTxt = document.getElementById('response-text');
+        const textInput = document.getElementById('textInput');
+        const sendBtn = document.getElementById('sendBtn');
 
-        // Setup Speech Recognition (Strictly controlled, NO infinite loops!)
+        // --- TEXT BOX LOGIC ---
+        sendBtn.addEventListener('click', async () => {
+            const message = textInput.value.trim();
+            if (!message) return;
+            
+            statusTxt.innerText = "Thinking... 🤔";
+            responseTxt.innerText = `You: "${message}"`;
+            textInput.value = ""; // Clear box after sending
+
+            try {
+                // Sends isVoice: false so it doesn't waste ElevenLabs API characters!
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, isVoice: false })
+                });
+                
+                const data = await response.json();
+                statusTxt.innerText = "Apex says:";
+                responseTxt.innerText = data.reply;
+            } catch (error) {
+                statusTxt.innerText = "Connection Error ❌";
+                console.error(error);
+            }
+        });
+
+        // Allow pressing Enter on the keyboard to send
+        textInput.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                sendBtn.click();
+            }
+        });
+
+        // --- VOICE LOGIC (Still Push-to-Talk) ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        
         if (!SpeechRecognition) {
             statusTxt.innerText = "Browser doesn't support speech recognition. ❌";
         } else {
             const recognition = new SpeechRecognition();
-            recognition.continuous = false; // Only listens once per tap
+            recognition.continuous = false;
             recognition.interimResults = false; 
 
             micBtn.addEventListener('click', () => {
@@ -71,14 +137,13 @@
                 }
             });
 
-            // When you finish speaking, it stops automatically
             recognition.onresult = async (event) => {
                 const transcript = event.results[0][0].transcript;
                 statusTxt.innerText = "Thinking... 🤔";
                 responseTxt.innerText = `You: "${transcript}"`;
                 
-                // Send the text to your app.py
                 try {
+                    // Sends isVoice: true so ElevenLabs generates the audio
                     const response = await fetch('/ask', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -89,29 +154,23 @@
                     statusTxt.innerText = "Apex is speaking... 🔊";
                     responseTxt.innerText = data.reply;
 
-                    // Play the base64 audio from ElevenLabs!
                     if (data.audio) {
                         const audio = new Audio("data:audio/mpeg;base64," + data.audio);
                         audio.play();
-                        
-                        audio.onended = () => {
-                            statusTxt.innerText = "Tap the mic and speak...";
-                        };
+                        audio.onended = () => { statusTxt.innerText = "Tap the mic or type below..."; };
                     } else {
-                        statusTxt.innerText = "Tap the mic and speak... (No audio returned)";
+                        statusTxt.innerText = "Tap the mic or type below... (No audio returned)";
                     }
-
                 } catch (error) {
                     statusTxt.innerText = "Connection Error ❌";
                     console.error(error);
                 }
             };
 
-            // This ensures the button resets properly when it stops listening
             recognition.onend = () => {
                 micBtn.classList.remove("recording");
                 if (statusTxt.innerText.includes("Listening")) {
-                    statusTxt.innerText = "Didn't catch that. Tap to try again.";
+                    statusTxt.innerText = "Didn't catch that. Tap or type to try again.";
                 }
             };
 
