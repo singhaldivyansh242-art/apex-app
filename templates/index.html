@@ -3,77 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APEX Interface</title>
+    <title>APEX UI - LIVE</title>
     <style>
-        body { background-color: #050505; color: #00ff00; font-family: monospace; text-align: center; padding: 5%; margin: 0; }
-        .btn { background-color: #00ff00; color: #000; border: none; padding: 15px 30px; font-size: 1.2em; cursor: pointer; border-radius: 10px; box-shadow: 0 0 10px #00ff00; font-weight: bold; margin: 10px; transition: 0.2s; }
-        .btn:active { background-color: #fff; box-shadow: 0 0 20px #fff; }
-        #textInput { padding: 15px; font-size: 1.2em; width: 60%; max-width: 400px; border-radius: 10px; border: 1px solid #00ff00; background: #111; color: #00ff00; margin-top: 20px; font-family: monospace; outline: none; }
-        #status { margin-top: 20px; font-style: italic; color: #aaa; }
-        #response { margin-top: 30px; font-size: 1.2em; white-space: pre-wrap; line-height: 1.5; text-align: left; background: #111; padding: 20px; border-radius: 8px; border: 1px solid #333; display: inline-block; width: 80%; max-width: 600px; }
+        :root { --bg: #09090b; --panel: #18181b; --primary: #00f0ff; --text: #e4e4e7; }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        
+        header { background: var(--panel); padding: 20px; text-align: center; border-bottom: 1px solid #27272a; box-shadow: 0 4px 20px rgba(0,240,255,0.1); }
+        h1 { margin: 0; font-size: 1.5rem; letter-spacing: 2px; color: var(--primary); font-family: monospace; text-shadow: 0 0 10px rgba(0,240,255,0.5); }
+        
+        #chatBox { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .message { max-width: 80%; padding: 12px 18px; border-radius: 20px; font-size: 1rem; line-height: 1.4; animation: fadeIn 0.3s ease; }
+        .user-msg { background: var(--primary); color: #000; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 0 10px rgba(0,240,255,0.2); }
+        .apex-msg { background: var(--panel); border: 1px solid #27272a; align-self: flex-start; border-bottom-left-radius: 4px; }
+        
+        .top-controls { display: flex; justify-content: center; padding: 10px; background: var(--panel); border-bottom: 1px solid #27272a; }
+        #liveBtn { background: transparent; border: 2px solid var(--primary); color: var(--primary); padding: 10px 20px; border-radius: 30px; font-weight: bold; cursor: pointer; transition: 0.3s; letter-spacing: 1px; }
+        #liveBtn.active { background: var(--primary); color: #000; box-shadow: 0 0 15px var(--primary); animation: pulse 1.5s infinite; }
+        
+        .input-container { padding: 20px; background: var(--bg); border-top: 1px solid #27272a; display: flex; gap: 10px; align-items: center; justify-content: center; }
+        input[type="text"] { flex: 1; max-width: 800px; background: var(--panel); border: 1px solid #3f3f46; color: white; padding: 15px 20px; border-radius: 30px; font-size: 1rem; outline: none; transition: 0.3s; }
+        input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 15px rgba(0,240,255,0.2); }
+        
+        .btn { background: var(--panel); border: 1px solid #3f3f46; color: var(--primary); width: 50px; height: 50px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; transition: 0.3s; }
+        .btn:hover { background: var(--primary); color: #000; box-shadow: 0 0 15px var(--primary); }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0,240,255,0.7); } 70% { box-shadow: 0 0 0 15px rgba(0,240,255,0); } 100% { box-shadow: 0 0 0 0 rgba(0,240,255,0); } }
     </style>
 </head>
 <body>
-    <h1>APEX ONLINE</h1>
+    <header><h1>APEX CORE</h1></header>
     
-    <div>
-        <button id="micBtn" class="btn">🎤 VOICE INPUT</button>
+    <div class="top-controls">
+        <button id="liveBtn">🎙️ START LIVE MODE</button>
     </div>
     
-    <div>
-        <input type="text" id="textInput" placeholder="Type a message...">
-        <button id="sendBtn" class="btn">✉️ SEND TEXT</button>
+    <div id="chatBox">
+        <div class="message apex-msg">Systems nominal. I am online and ready.</div>
     </div>
-
-    <div id="status">Systems nominal. Awaiting input...</div>
-    <div id="response"></div>
+    
+    <div class="input-container">
+        <input type="text" id="textInput" placeholder="Message Apex...">
+        <button id="sendBtn" class="btn">➤</button>
+    </div>
 
     <script>
-        const micBtn = document.getElementById('micBtn');
-        const sendBtn = document.getElementById('sendBtn');
+        const chatBox = document.getElementById('chatBox');
         const textInput = document.getElementById('textInput');
-        const statusDiv = document.getElementById('status');
-        const responseDiv = document.getElementById('response');
-
+        const sendBtn = document.getElementById('sendBtn');
+        const liveBtn = document.getElementById('liveBtn');
+        
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const synth = window.speechSynthesis;
         let recognition;
-
-        if (!SpeechRecognition) {
-            statusDiv.innerText = "Speech Recognition API is not supported in this browser.";
-        } else {
+        
+        let isLiveMode = false;
+        let isSpeaking = false;
+        
+        if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.continuous = false;
-
-            micBtn.addEventListener('click', () => {
-                recognition.start();
-                statusDiv.innerText = "Listening...";
-                responseDiv.innerText = "";
+            
+            liveBtn.addEventListener('click', () => {
+                isLiveMode = !isLiveMode;
+                if (isLiveMode) {
+                    liveBtn.innerText = "🛑 STOP LIVE MODE";
+                    liveBtn.classList.add('active');
+                    if (!isSpeaking) recognition.start();
+                } else {
+                    liveBtn.innerText = "🎙️ START LIVE MODE";
+                    liveBtn.classList.remove('active');
+                    recognition.stop();
+                    synth.cancel();
+                    isSpeaking = false;
+                }
             });
-
+            
             recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                textInput.value = transcript; 
-                sendToApex(transcript, true); 
+                const text = event.results[0][0].transcript;
+                appendMessage(text, 'user-msg');
+                sendToApex(text, true);
+            };
+            
+            // Loop logic: if live mode is on and Apex isn't talking, keep listening!
+            recognition.onend = () => {
+                if (isLiveMode && !isSpeaking) {
+                    try { recognition.start(); } catch(e) {}
+                }
             };
         }
 
-        sendBtn.addEventListener('click', () => {
-            const text = textInput.value.trim();
-            if (text) sendToApex(text, false); 
-        });
+        sendBtn.addEventListener('click', handleSend);
+        textInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
 
-        textInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                const text = textInput.value.trim();
-                if (text) sendToApex(text, false); 
-            }
-        });
+        function handleSend() {
+            const text = textInput.value.trim();
+            if (!text) return;
+            textInput.value = '';
+            appendMessage(text, 'user-msg');
+            sendToApex(text, false);
+        }
+
+        function appendMessage(text, className) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${className}`;
+            msgDiv.innerText = text;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
 
         async function sendToApex(message, isVoice) {
-            statusDiv.innerText = `Transmitting: "${message}"...`;
-            responseDiv.innerText = "Processing...";
-            synth.cancel();
+            const loadingId = "load-" + Date.now();
+            appendMessage("...", `apex-msg ${loadingId}`);
+            
+            if (isVoice) {
+                recognition.stop(); // Stop listening while processing
+            }
 
             try {
                 const res = await fetch('/ask', {
@@ -83,16 +128,32 @@
                 });
                 const data = await res.json();
                 
-                responseDiv.innerText = data.reply;
-                statusDiv.innerText = "Response received.";
+                chatBox.lastChild.remove();
+                appendMessage(data.reply, 'apex-msg');
 
                 if (isVoice) {
+                    isSpeaking = true;
                     const utterance = new SpeechSynthesisUtterance(data.reply);
+                    
+                    // When Apex finishes speaking, automatically start listening again!
+                    utterance.onend = () => {
+                        isSpeaking = false;
+                        if (isLiveMode) {
+                            try { recognition.start(); } catch(e) {}
+                        }
+                    };
                     synth.speak(utterance);
                 }
+
             } catch (err) {
-                statusDiv.innerText = "Connection to APEX core failed.";
-                responseDiv.innerText = "";
+                chatBox.lastChild.remove();
+                appendMessage("Connection failure.", 'apex-msg');
+                if (isVoice) {
+                    isSpeaking = false;
+                    if (isLiveMode) {
+                        try { recognition.start(); } catch(e) {}
+                    }
+                }
             }
         }
     </script>
