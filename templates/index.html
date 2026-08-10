@@ -8,17 +8,17 @@
         :root { --bg: #09090b; --panel: #18181b; --primary: #00f0ff; --text: #e4e4e7; }
         body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
         
-        header { background: var(--panel); padding: 20px; text-align: center; border-bottom: 1px solid #27272a; box-shadow: 0 4px 20px rgba(0,240,255,0.1); }
+        header { background: var(--panel); padding: 15px; text-align: center; border-bottom: 1px solid #27272a; box-shadow: 0 4px 20px rgba(0,240,255,0.1); }
         h1 { margin: 0; font-size: 1.5rem; letter-spacing: 2px; color: var(--primary); font-family: monospace; text-shadow: 0 0 10px rgba(0,240,255,0.5); }
-        
-        #chatBox { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        .message { max-width: 80%; padding: 12px 18px; border-radius: 20px; font-size: 1rem; line-height: 1.4; animation: fadeIn 0.3s ease; }
-        .user-msg { background: var(--primary); color: #000; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 0 10px rgba(0,240,255,0.2); }
-        .apex-msg { background: var(--panel); border: 1px solid #27272a; align-self: flex-start; border-bottom-left-radius: 4px; }
         
         .top-controls { display: flex; justify-content: center; padding: 10px; background: var(--panel); border-bottom: 1px solid #27272a; }
         #liveBtn { background: transparent; border: 2px solid var(--primary); color: var(--primary); padding: 10px 20px; border-radius: 30px; font-weight: bold; cursor: pointer; transition: 0.3s; letter-spacing: 1px; }
         #liveBtn.active { background: var(--primary); color: #000; box-shadow: 0 0 15px var(--primary); animation: pulse 1.5s infinite; }
+        
+        #chatBox { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .message { max-width: 80%; padding: 12px 18px; border-radius: 20px; font-size: 1rem; line-height: 1.4; animation: fadeIn 0.3s ease; word-wrap: break-word; }
+        .user-msg { background: var(--primary); color: #000; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 0 10px rgba(0,240,255,0.2); }
+        .apex-msg { background: var(--panel); border: 1px solid #27272a; align-self: flex-start; border-bottom-left-radius: 4px; }
         
         .input-container { padding: 20px; background: var(--bg); border-top: 1px solid #27272a; display: flex; gap: 10px; align-items: center; justify-content: center; }
         input[type="text"] { flex: 1; max-width: 800px; background: var(--panel); border: 1px solid #3f3f46; color: white; padding: 15px 20px; border-radius: 30px; font-size: 1rem; outline: none; transition: 0.3s; }
@@ -43,7 +43,7 @@
     </div>
     
     <div class="input-container">
-        <input type="text" id="textInput" placeholder="Message Apex...">
+        <input type="text" id="textInput" placeholder="Type a message manually...">
         <button id="sendBtn" class="btn">➤</button>
     </div>
 
@@ -85,7 +85,6 @@
                 sendToApex(text, true);
             };
             
-            // Loop logic: if live mode is on and Apex isn't talking, keep listening!
             recognition.onend = () => {
                 if (isLiveMode && !isSpeaking) {
                     try { recognition.start(); } catch(e) {}
@@ -116,9 +115,7 @@
             const loadingId = "load-" + Date.now();
             appendMessage("...", `apex-msg ${loadingId}`);
             
-            if (isVoice) {
-                recognition.stop(); // Stop listening while processing
-            }
+            if (isVoice) recognition.stop(); 
 
             try {
                 const res = await fetch('/ask', {
@@ -131,11 +128,10 @@
                 chatBox.lastChild.remove();
                 appendMessage(data.reply, 'apex-msg');
 
-                if (isVoice) {
+                if (isVoice || isLiveMode) {
                     isSpeaking = true;
                     const utterance = new SpeechSynthesisUtterance(data.reply);
                     
-                    // When Apex finishes speaking, automatically start listening again!
                     utterance.onend = () => {
                         isSpeaking = false;
                         if (isLiveMode) {
