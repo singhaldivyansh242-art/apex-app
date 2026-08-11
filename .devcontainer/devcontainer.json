@@ -1,0 +1,17 @@
+{
+  "name": "Ubuntu Desktop Workspace",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {
+    "ghcr.io/devcontainers/features/desktop-lite:1": {
+      "password": "codespaces"
+    }
+  },
+  "forwardPorts": [6080],
+  "portsAttributes": {
+    "6080": {
+      "label": "Ubuntu Desktop Web GUI",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "postCreateCommand": "wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && sudo apt-get update && sudo apt-get install -y ./google-chrome-stable_current_amd64.deb falkon && rm google-chrome-stable_current_amd64.deb && sudo sed -i 's/google-chrome-stable %U/google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage %U/g' /usr/share/applications/google-chrome.desktop"
+}
